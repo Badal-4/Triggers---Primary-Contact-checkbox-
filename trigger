@@ -128,3 +128,67 @@ trigger trg2 on Contact(after Update)
         }
     }
 }
+
+
+
+
+
+//Correct code with both insert and update operation
+trigger trg2 on Contact(after Insert,after Update)
+{
+    Set<Id> conIds = new Set<Id>();
+    Set<Id> accIds = new Set<Id>();
+    
+    if(trigger.isAfter && trigger.isUpdate)
+    {
+        for(Contact c : trigger.new)
+        {
+            if(c.AccountId != null)
+            {
+                accIds.add(c.AccountId);
+            }
+            Contact oldCon = trigger.oldMap.get(c.Id);
+            if(oldCon.Id != null)
+            {
+                conIds.add(oldCon.Id);
+            }
+        }
+    }
+    if(trigger.isAfter && trigger.isInsert)
+    {
+        for(Contact c : trigger.new)
+        {
+            if(c.AccountId != null)
+            {
+                accIds.add(c.AccountId);
+               
+            }
+            Contact newCon = trigger.newMap.get(c.Id);
+            
+            if(newCon.Id != null)
+            {
+                conIds.add(newCon.Id);
+            }
+        }
+    }
+        
+        List<Contact> conList = [Select Id,AccountId,Primary_Contact__c from Contact where AccountId IN : accIds and 
+                                Id NOT IN : conIds];
+        List<Contact> contList = new List<Contact>();
+        
+        if(checkRecursive.runOnce())
+        {
+            for(Contact co : trigger.new)
+            {
+                if(co.Primary_Contact__c == true)
+                {
+                    for(Contact con : conList)
+                    {
+                        con.Primary_Contact__c = false;
+                        contList.add(con);
+                    }
+                }
+            }
+            update contList;
+        }
+}
